@@ -1,114 +1,123 @@
-## How to create golang HTTP-server with metrics
+# How to Set Up Prometheus and Grafana in a Golang HTTP Server
 
-### 1. Integrating Prometheus into a Go Application
+## 1. Integrating Prometheus into a Go Application
 
-Prometheus uses a metrics format that can be integrated into a Go application using the `prometheus/client_golang` library.
+Prometheus uses a metric format that can be integrated into a Go application using the `prometheus/client_golang` library.
 
-1. **Install the library**:
-   ```bash
-   go get github.com/prometheus/client_golang/prometheus
-   go get github.com/prometheus/client_golang/prometheus/promhttp
-   ```
+### **1.1. Installing the library**:
 
-2. **Export metrics**:
-   Add code to your application to export metrics. For example:
+```bash
+go get github.com/prometheus/client_golang/prometheus
+go get github.com/prometheus/client_golang/prometheus/promhttp
+```
 
-   ```go
-   package main
+### **1.2. Exporting metrics**:
 
-   import (
-       "net/http"
-       "github.com/prometheus/client_golang/prometheus"
-       "github.com/prometheus/client_golang/prometheus/promhttp"
-   )
+Add the following code to your application to export metrics. For example:
 
-   var (
-       requestCount = prometheus.NewCounterVec(
-           prometheus.CounterOpts{
-               Name: "http_requests_total",
-               Help: "Total number of HTTP requests",
-           },
-           []string{"method", "handler"},
-       )
-   )
+```go
+package main
 
-   func init() {
-       prometheus.MustRegister(requestCount)
-   }
+import (
+    "net/http"
+    "github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promhttp"
+)
 
-   func main() {
-       http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-           requestCount.With(prometheus.Labels{"method": r.Method, "handler": "/"})
-           w.Write([]byte("Hello, Prometheus!"))
-       })
+var (
+    requestCount = prometheus.NewCounterVec(
+        prometheus.CounterOpts{
+            Name: "http_requests_total",
+            Help: "Total number of HTTP requests",
+        },
+        []string{"method", "handler"},
+    )
+)
 
-       // Register the metrics handler
-       http.Handle("/metrics", promhttp.Handler())
+func init() {
+    prometheus.MustRegister(requestCount)
+}
 
-       http.ListenAndServe(":8080", nil)
-   }
-   ```
+func main() {
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        requestCount.With(prometheus.Labels{"method": r.Method, "handler": "/"}).Inc()
+        w.Write([]byte("Hello, Prometheus!"))
+    })
 
-   In this example, metrics are available at the `/metrics` path.
+    // Register the metrics handler
+    http.Handle("/metrics", promhttp.Handler())
 
-### 2. Installing and Configuring Prometheus
+    http.ListenAndServe(":8080", nil)
+}
+```
 
-1. **Download Prometheus**:
-   Go to the [official Prometheus website](https://prometheus.io/download/) and download the latest version.
+In this example, metrics are available at the `/metrics` path.
 
-2. **Configure Prometheus**:
-   Create a configuration file `prometheus.yml`:
+## 2. Installing and Setting Up Prometheus
 
-   ```yaml
-   global:
-     scrape_interval: 15s
+### **2.1. Download Prometheus**:
 
-   scrape_configs:
-     - job_name: "golang_app"
-       static_configs:
-         - targets: ["localhost:8080"]
-   ```
+Go to the [official Prometheus website](https://prometheus.io/download/) and download the latest version.
 
-   This configuration file instructs Prometheus to collect metrics from your Go application running on port 8080.
+### **2.2. Configuring Prometheus**:
 
-3. **Run Prometheus**:
-   Start Prometheus with the following command:
+Create a `prometheus.yml` configuration file:
 
-   ```bash
-   ./prometheus --config.file=prometheus.yml
-   ```
+```yaml
+global:
+  scrape_interval: 15s
 
-   By default, the Prometheus interface is available at `http://localhost:9090`.
+scrape_configs:
+  - job_name: "golang_app"
+    static_configs:
+      - targets: ["localhost:8080"]
+```
 
-### 3. Installing and Configuring Grafana
+This configuration tells Prometheus to scrape metrics from your Go application running on port 8080.
 
-1. **Download and Install Grafana**:
-   Go to the [official Grafana website](https://grafana.com/grafana/download) and install Grafana following the instructions for your operating system.
+### **2.3. Running Prometheus**:
 
-2. **Start Grafana**:
-   Start Grafana:
+Start Prometheus with the following command:
 
-   ```bash
-   sudo systemctl start grafana-server
-   ```
+```bash
+./prometheus --config.file=prometheus.yml
+```
 
-   Once started, the Grafana interface will be available at `http://localhost:3000`. The default login is `admin`, and the password is `admin`.
+By default, Prometheus will be accessible at `http://localhost:9090`.
 
-3. **Set Up Data Source**:
-   - Log in to the Grafana interface.
-   - Go to `Configuration` -> `Data Sources`.
-   - Click `Add data source` and select `Prometheus`.
-   - Enter the Prometheus URL (`http://localhost:9090`) and save.
+## 3. Installing and Setting Up Grafana
 
-4. **Create a Dashboard**:
-   - Go to `Create` -> `Dashboard`.
-   - Click `Add new panel` and select the metric you want to visualize (e.g., `http_requests_total`).
-   - Configure the graph display and save the panel.
+### **3.1. Download and Install Grafana**:
 
-### 4. Monitoring and Visualization
+Go to the [official Grafana website](https://grafana.com/grafana/download) and follow the instructions to install Grafana for your operating system.
 
-You can now monitor your metrics through the Grafana interface. Based on the data you export from your Go application, you can create various visualizations and dashboards to monitor your application's performance.
+### **3.2. Running Grafana**:
 
-### 5. (Optional) Setting Up Alerts
+Start Grafana:
 
-You can set up alerts in Prometheus and Grafana to notify you of issues with your application. In Prometheus, alerts are configured through Alertmanager, and in Grafana, you can set up notifications through integrations with various messaging and email services.
+```bash
+sudo systemctl start grafana-server
+```
+
+Once started, the Grafana UI will be available at `http://localhost:3000`. The default login is `admin`, and the default password is `admin`.
+
+### **3.3. Setting Up a Data Source**:
+
+- Log in to Grafana.
+- Go to `Configuration` -> `Data Sources`.
+- Click `Add data source` and select `Prometheus`.
+- Enter the Prometheus URL (`http://localhost:9090`) and save.
+
+### **3.4. Creating a Dashboard**:
+
+- Go to `Create` -> `Dashboard`.
+- Click `Add new panel`, and select the metric you want to visualize (e.g., `http_requests_total`).
+- Customize the graph display and save the panel.
+
+## 4. Monitoring and Visualization
+
+Now, you can observe your metrics through the Grafana dashboard. Based on the data exported from your Go application, you can create various visualizations and dashboards to monitor your application's performance.
+
+## 5. Setting Up Alerts
+
+You can configure alerts in both Prometheus and Grafana to notify you of issues with your application. In Prometheus, alerts are managed via Alertmanager, while Grafana allows integration with various messaging and email services for sending notifications.
